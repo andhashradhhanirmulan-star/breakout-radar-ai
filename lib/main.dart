@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const BreakoutRadarApp());
@@ -12,17 +14,45 @@ class BreakoutRadarApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Breakout Radar AI',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.black,
-        primaryColor: Colors.greenAccent,
-      ),
-      home: const DashboardScreen(),
+      theme: ThemeData.dark(),
+      home: const BreakoutScreen(),
     );
   }
 }
 
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+class BreakoutScreen extends StatefulWidget {
+  const BreakoutScreen({super.key});
+
+  @override
+  State<BreakoutScreen> createState() => _BreakoutScreenState();
+}
+
+class _BreakoutScreenState extends State<BreakoutScreen> {
+
+  List stocks = [];
+  bool loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchStocks();
+  }
+
+  Future fetchStocks() async {
+
+    final url = Uri.parse(
+      'https://query1.finance.yahoo.com/v7/finance/quote?symbols=HAL.NS,GRSE.NS,KFINTECH.NS,ASTRAMICRO.NS'
+    );
+
+    final response = await http.get(url);
+
+    final data = jsonDecode(response.body);
+
+    setState(() {
+      stocks = data['quoteResponse']['result'];
+      loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,102 +60,58 @@ class DashboardScreen extends StatelessWidget {
     return Scaffold(
 
       appBar: AppBar(
-        backgroundColor: Colors.black,
         title: const Text('Breakout Radar AI'),
       ),
 
-      body: ListView(
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
 
-        padding: const EdgeInsets.all(12),
+              itemCount: stocks.length,
 
-        children: const [
+              itemBuilder: (context, index) {
 
-          BreakoutCard(
-            stock: 'HAL',
-            breakout: 'Weekly Breakout',
-            score: 91,
-          ),
+                final stock = stocks[index];
 
-          BreakoutCard(
-            stock: 'GRSE',
-            breakout: 'Volume Breakout',
-            score: 88,
-          ),
+                return Card(
 
-          BreakoutCard(
-            stock: 'KFINTECH',
-            breakout: 'Consolidation Breakout',
-            score: 85,
-          ),
+                  margin: const EdgeInsets.all(12),
 
-        ],
-      ),
-    );
-  }
-}
+                  child: Padding(
 
-class BreakoutCard extends StatelessWidget {
+                    padding: const EdgeInsets.all(16),
 
-  final String stock;
-  final String breakout;
-  final int score;
+                    child: Column(
 
-  const BreakoutCard({
-    super.key,
-    required this.stock,
-    required this.breakout,
-    required this.score,
-  });
+                      crossAxisAlignment: CrossAxisAlignment.start,
 
-  @override
-  Widget build(BuildContext context) {
+                      children: [
 
-    return Card(
+                        Text(
+                          stock['symbol'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.greenAccent,
+                          ),
+                        ),
 
-      color: Colors.grey.shade900,
+                        const SizedBox(height: 8),
 
-      margin: const EdgeInsets.only(bottom: 12),
+                        Text(
+                          'Price: ${stock['regularMarketPrice']}',
+                        ),
 
-      child: Padding(
+                        Text(
+                          'Change: ${stock['regularMarketChangePercent'].toStringAsFixed(2)}%',
+                        ),
 
-        padding: const EdgeInsets.all(16),
-
-        child: Column(
-
-          crossAxisAlignment: CrossAxisAlignment.start,
-
-          children: [
-
-            Text(
-              stock,
-
-              style: const TextStyle(
-                color: Colors.greenAccent,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              breakout,
-              style: const TextStyle(color: Colors.white70),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'Breakout Score: $score/100',
-
-              style: const TextStyle(
-                color: Colors.orangeAccent,
-              ),
-            ),
-
-          ],
-        ),
-      ),
     );
   }
 }
